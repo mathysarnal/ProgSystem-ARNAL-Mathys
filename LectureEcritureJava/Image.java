@@ -1,4 +1,6 @@
 import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class Image {
@@ -77,5 +79,83 @@ public class Image {
         }
 
         writer.close();
+    }
+
+    public void write_bin(String filename) throws IOException {
+
+        FileOutputStream output = new FileOutputStream(filename);
+
+        output.write("P6\n".getBytes());
+        output.write((width + " " + height + "\n").getBytes());
+        output.write("255\n".getBytes());
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                output.write(pixels[y][x][0]);
+                output.write(pixels[y][x][1]);
+                output.write(pixels[y][x][2]);
+            }
+        }
+
+        output.close();
+    }
+
+    public static Image read_bin(String filename) throws IOException {
+
+        FileInputStream input = new FileInputStream(filename);
+
+        // Lire le header
+        String format = lireMot(input);
+        int width = Integer.parseInt(lireMot(input));
+        int height = Integer.parseInt(lireMot(input));
+        int max = Integer.parseInt(lireMot(input));
+
+        if (!format.equals("P6")) {
+            input.close();
+            throw new IOException("Le fichier n'est pas au format P6.");
+        }
+
+        if (max != 255) {
+            input.close();
+            throw new IOException("La valeur maximale doit être 255.");
+        }
+
+        Image image = new Image(width, height);
+
+        // Lire les pixels
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+
+                int r = input.read();
+                int g = input.read();
+                int b = input.read();
+
+                image.setPixel(x, y, r, g, b);
+            }
+        }
+
+        input.close();
+
+        return image;
+    }
+
+    // Lire un élément du header
+    private static String lireMot(FileInputStream input) throws IOException {
+
+        String mot = "";
+        int c;
+
+        // Ignorer les espaces
+        do {
+            c = input.read();
+        } while (c == ' ' || c == '\n' || c == '\r' || c == '\t');
+
+        // Lire le mot
+        while (c != ' ' && c != '\n' && c != '\r' && c != '\t' && c != -1) {
+            mot += (char) c;
+            c = input.read();
+        }
+
+        return mot;
     }
 }
