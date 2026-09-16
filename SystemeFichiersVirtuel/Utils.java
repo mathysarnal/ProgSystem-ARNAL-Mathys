@@ -18,7 +18,10 @@ public class Utils {
 
     public static int writeShort(byte[] memory, int offset, short value) {
         // TODO: Écrire les 2 octets de 'value'.
-        return 2;
+        memory[offset] = (byte) (value >> 8);
+        memory[offset + 1] = (byte) (value);
+
+        return memory;
     }
 
     public static short readShort(byte[] memory, int offset) {
