@@ -1,6 +1,6 @@
 public class Utils {
 
-    public static int writeInt(byte[] memory, int offset, int value) {
+    public static writeInt writeInt(byte[] memory, int offset, int value) {
         // TODO: Écrire les 4 octets de 'value' dans 'memory'
         // à partir de 'offset', en big-endian.
         memory[offset] = (byte) (value >> 24);
@@ -8,12 +8,26 @@ public class Utils {
         memory[offset + 2] = (byte) (value >> 8);
         memory[offset + 3] = (byte) (value);
 
-        return memory;
+        return 4;
     }
 
     public static int readInt(byte[] memory, int offset) {
         // TODO: Reconstituer le int sur 4 octets.
-        return 0;
+        int v1,
+            v2,
+            v3,
+            v4
+            valeurFinale;
+        v1 = (int) memory[offset + 3] (v1);
+        v1 = v1 << 24;
+        v2 = (int) memory[offset + 2] (v2);
+        v2 = v2 << 16;
+        v3 = (int) memory[offset + 1] (v3);
+        v3 = v3 << 8;
+        v4 = (int) memory[offset] (v4);
+
+        valeurFinale = v1 | v2 | v3 | v4;
+        return valeurFinale;
     }
 
     public static int writeShort(byte[] memory, int offset, short value) {
