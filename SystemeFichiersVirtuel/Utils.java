@@ -64,10 +64,16 @@ public class Utils {
         String str,
         int maxLength) {
 
-        // TODO:
-        // 1. Convertir la chaîne en octets.
-        // 2. Copier les octets sans dépasser maxLength.
-        // 3. Nettoyer le reste de la zone avec des zéros.
+        byte[] strBytes = str.getBytes();
+        int length = Math.min(strBytes.length, maxLength);
+
+        // Copier les octets sans dépasser maxLength
+        System.arraycopy(strBytes, 0, memory, offset, length);
+
+        // Nettoyer le reste de la zone avec des zéros
+        for (int i = length; i < maxLength; i++) {
+            memory[offset + i] = 0;
+        }
 
         return maxLength;
     }
@@ -77,10 +83,13 @@ public class Utils {
             int offset,
             int maxLength) {
 
-        // TODO:
-        // Lire jusqu'au premier octet nul
-        // ou jusqu'à maxLength.
+        int length = 0;
 
-        return "";
+        // Lire jusqu'au premier octet nul ou jusqu'à maxLength
+        while (length < maxLength && memory[offset + length] != 0) {
+            length++;
+        }
+
+        return new String(memory, offset, length);
     }
 }
