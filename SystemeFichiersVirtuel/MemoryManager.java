@@ -33,22 +33,64 @@ public class MemoryManager {
         writeSuperblock();
 
         // Réserver les blocs système 0 à 128.
-        reserveSystemBlocks();
+        allocateBlock();
     }
 
-    private void reserveSystemBlocks() {
-        // Blocs 0 à 128 inclus = 129 blocs réservés au système
-        for (int block = 0; block <= 128; block++) {
-            setBlockUsed(block);
+    public boolean setBlockUsed(int blockNumber, boolean used) {
+        if (blockNumber < 0 ||
+                blockNumber >= NUM_BLOCKS) {
+                return false;
         }
+
+        int byteIndex = blockNumber / 8;
+        int bitPosition = blockNumber % 8;
+        int offset = BITMAP_OFFSET + byteIndex;
+
+        int masque = 1 << bitPosition;
+
+        if (used) {
+            // Positionner le bit à 1.
+            memory[offset] |= masque;
+        } else {
+            // Positionner le bit à 0.
+            memory[offset] &= ~masque;
+        }
+
+        return true;
     }
 
-    private void setBlockUsed(int blockNumber) {
-        int byteIndex = blockNumber / 8;   // quel octet du bitmap
-        int bitIndex = blockNumber % 8;    // quel bit dans cet octet
+    public int isBlockUsed(int blockNumber) {
 
-        int mask = 1 << (7 - bitIndex); // bit de poids fort = bloc 0 de l'octet
-        memory[BITMAP_OFFSET + byteIndex] |= (byte) mask;
+        if (blockNumber < 0 ||
+                blockNumber >= NUM_BLOCKS) {
+                return -1;
+        }
+
+        int byteIndex = blockNumber / 8;
+        int bitPosition = blockNumber % 8;
+        int offset = BITMAP_OFFSET + byteIndex;
+
+        int masque = 1 << bitPosition;
+
+        return (memory[offset] & masque) != 0 ? 1 : 0;
+    }
+
+    public int allocateBlock() {
+
+        // TODO:
+        // Parcourir les blocs de données :
+        // 129 .. NUM_BLOCKS - 1.
+        //
+        // Retourner le premier bloc libre.
+        // Le marquer immédiatement comme utilisé.
+
+        for (int bloc = 129; NUM_BLOCKS-1; bloc--) {
+            if (bloc.isBlockUsed()) {
+                bloc.setBlockUsed()
+            }
+        }
+
+        return -1;
     }
 
     private void writeSuperblock() {
