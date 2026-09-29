@@ -1,5 +1,3 @@
-import java.io.*;
-
 public class MemoryManager {
 
     public static final int BLOCK_SIZE = 512;
@@ -54,6 +52,7 @@ public class MemoryManager {
         } else {
             // Positionner le bit à 0.
             memory[offset] &= ~masque;
+            // ou memory[offset] ^= masque;
         }
 
         return true;
@@ -84,9 +83,10 @@ public class MemoryManager {
         // Retourner le premier bloc libre.
         // Le marquer immédiatement comme utilisé.
 
-        for (int bloc = 129; NUM_BLOCKS-1; bloc--) {
-            if (bloc.isBlockUsed()) {
-                bloc.setBlockUsed()
+        for (int bloc = 129; bloc < NUM_BLOCKS; bloc++) {
+            if (isBlockUsed(bloc) == 0) {
+                setBlockUsed(bloc, true);
+                return bloc;
             }
         }
 
