@@ -5,6 +5,10 @@ public class TestRunner {
         testStep3();
         testStep4();
         testStep5();
+        testStep6();
+        testStep7();
+        testStep8();
+        testStep9();
     }
     
     public static void testStep2() {
@@ -197,6 +201,199 @@ public class TestRunner {
                 "Un bloc hors limites doit être refusé";
 
         System.out.println("[OK] Étape 5 validée !");
+    }
+
+    public static void testStep6() {
+        System.out.println("=== TEST ÉTAPE 6 : Adressage Inode ===");
+
+        MemoryManager mm = new MemoryManager();
+
+        Inode inode = new Inode(mm, 4);
+
+        int expectedOffset =
+                MemoryManager.INODE_TABLE_OFFSET
+                + (4 * Inode.INODE_SIZE);
+
+        assert inode.getInodeOffset() == expectedOffset :
+                "Offset d'inode incorrect";
+
+        System.out.println("[OK] Étape 6 validée !");
+    }
+
+    public static void testStep7() {
+        System.out.println("=== TEST ÉTAPE 7 : Sérialisation Inode ===");
+
+        MemoryManager mm = new MemoryManager();
+
+        Inode inode = new Inode(mm, 2);
+
+        int[] ptrs = new int[] {
+                150, 151, 0, 0, 0,
+                0, 0, 0, 0, 0
+        };
+
+        long creation = 0x0102030405060708L;
+        long modification = 0x1112131415161718L;
+
+        inode.writeToMemory(
+                1,
+                1024,
+                creation,
+                modification,
+                ptrs,
+                777,
+                (short) 0644,
+                3);
+
+        byte[] memory =
+                mm.getFilesystemMemory();
+
+        int offset = inode.getInodeOffset();
+
+        assert (memory[offset] & 0xFF) == 0x00;
+        assert (memory[offset + 3] & 0xFF) == 0x02;
+
+        assert Utils.readInt(memory, offset + 4) == 1;
+        assert Utils.readInt(memory, offset + 8) == 1024;
+
+        assert (memory[offset + 12] & 0xFF) == 0x01;
+        assert (memory[offset + 13] & 0xFF) == 0x02;
+        assert (memory[offset + 14] & 0xFF) == 0x03;
+        assert (memory[offset + 15] & 0xFF) == 0x04;
+        assert (memory[offset + 16] & 0xFF) == 0x05;
+        assert (memory[offset + 17] & 0xFF) == 0x06;
+        assert (memory[offset + 18] & 0xFF) == 0x07;
+        assert (memory[offset + 19] & 0xFF) == 0x08;
+
+        assert Utils.readLong(
+                memory,
+                offset + 12) == creation;
+
+        assert Utils.readLong(
+                memory,
+                offset + 20) == modification;
+
+        assert Utils.readInt(
+                memory,
+                offset + 28) == 150;
+
+        assert Utils.readInt(
+                memory,
+                offset + 32) == 151;
+
+        assert Utils.readInt(
+                memory,
+                offset + 68) == 777;
+
+        assert Utils.readShort(
+                memory,
+                offset + 72) == (short) 0644;
+
+        assert Utils.readInt(
+                memory,
+                offset + 74) == 3;
+
+        assert inode.getFileType() == 1;
+        assert inode.getFileSize() == 1024;
+
+        int[] result =
+                inode.getDirectPointers();
+
+        assert result[0] == 150;
+        assert result[1] == 151;
+
+        System.out.println("[OK] Étape 7 validée !");
+    }
+
+    public static void testStep8() {
+        System.out.println("=== TEST ÉTAPE 8 : Création Fichier ===");
+
+        VirtualFileSystem vfs =
+                new VirtualFileSystem();
+
+        boolean ok1 =
+                vfs.createFile("/", "fichier1.txt");
+
+        boolean ok2 =
+                vfs.createFile("/", "fichier2.txt");
+
+        assert ok1 :
+                "La création du premier fichier a échoué";
+
+        assert ok2 :
+                "La création du second fichier a échoué";
+
+        MemoryManager mm =
+                vfs.getMemoryManager();
+
+        Inode inode0 =
+                new Inode(mm, 0);
+
+        Inode inode1 =
+                new Inode(mm, 1);
+
+        assert inode0.getFileType() == 1 :
+                "L'inode 0 doit représenter un fichier";
+
+        assert inode1.getFileType() == 1 :
+                "L'inode 1 doit représenter un fichier";
+
+        assert inode0.getFileSize() == 0 :
+                "Le premier fichier doit être vide";
+
+        assert inode1.getFileSize() == 0 :
+                "Le second fichier doit être vide";
+
+        System.out.println("[OK] Étape 8 validée !");
+    }
+
+    public static void testStep9() {
+        System.out.println("=== TEST ÉTAPE 9 : Entrées/Sorties Fichier ===");
+
+        VirtualFileSystem vfs =
+                new VirtualFileSystem();
+
+        assert vfs.createFile(
+                "/",
+                "test.txt");
+
+        String text =
+                "Contenu de test du système de fichiers";
+
+        byte[] original =
+                text.getBytes();
+
+        boolean writeOk =
+                vfs.writeFile(0, original);
+
+        assert writeOk :
+                "Erreur d'écriture";
+
+        Inode inode =
+                new Inode(
+                        vfs.getMemoryManager(),
+                        0);
+
+        assert inode.getFileSize()
+                == original.length :
+                "Taille d'inode incorrecte";
+
+        byte[] readBytes =
+                vfs.readFile(0);
+
+        assert readBytes != null :
+                "Buffer lu nul";
+
+        assert readBytes.length
+                == original.length :
+                "Longueur lue incorrecte";
+
+        for (int i = 0; i < original.length; i++) {
+                assert readBytes[i] == original[i] :
+                        "Octet incorrect à l'indice " + i;
+        }
+
+        System.out.println("[OK] Étape 9 validée !");
     }
 
 }

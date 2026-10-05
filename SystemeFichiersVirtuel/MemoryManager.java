@@ -27,17 +27,36 @@ public class MemoryManager {
         initializeFilesystem();
     }
 
+    public int findFreeBlock() {
+        for (int block = 129; block < NUM_BLOCKS; block++) {
+            if (isBlockUsed(block) == 0) {
+                return block;
+            }
+        }
+
+        return -1;
+    }
+
+    public int getBlockOffset(int blockNum) {
+        if (blockNum < 0 || blockNum >= NUM_BLOCKS) {
+            return -1;
+        }
+
+        return blockNum * BLOCK_SIZE;
+    }
+
     private void initializeFilesystem() {
         writeSuperblock();
 
-        // Réserver les blocs système 0 à 128.
-        allocateBlock();
+        // Les blocs 0 à 128 sont réservés par le layout.
+        // Ils ne doivent jamais être proposés par allocateBlock().
     }
 
     public boolean setBlockUsed(int blockNumber, boolean used) {
+
         if (blockNumber < 0 ||
                 blockNumber >= NUM_BLOCKS) {
-                return false;
+            return false;
         }
 
         int byteIndex = blockNumber / 8;
@@ -47,12 +66,9 @@ public class MemoryManager {
         int masque = 1 << bitPosition;
 
         if (used) {
-            // Positionner le bit à 1.
             memory[offset] |= masque;
         } else {
-            // Positionner le bit à 0.
             memory[offset] &= ~masque;
-            // ou memory[offset] ^= masque;
         }
 
         return true;
@@ -62,7 +78,7 @@ public class MemoryManager {
 
         if (blockNumber < 0 ||
                 blockNumber >= NUM_BLOCKS) {
-                return -1;
+            return -1;
         }
 
         int byteIndex = blockNumber / 8;
@@ -76,17 +92,11 @@ public class MemoryManager {
 
     public int allocateBlock() {
 
-        // TODO:
-        // Parcourir les blocs de données :
-        // 129 .. NUM_BLOCKS - 1.
-        //
-        // Retourner le premier bloc libre.
-        // Le marquer immédiatement comme utilisé.
+        for (int block = 129; block < NUM_BLOCKS; block++) {
 
-        for (int bloc = 129; bloc < NUM_BLOCKS; bloc++) {
-            if (isBlockUsed(bloc) == 0) {
-                setBlockUsed(bloc, true);
-                return bloc;
+            if (isBlockUsed(block) == 0) {
+                setBlockUsed(block, true);
+                return block;
             }
         }
 
@@ -94,8 +104,6 @@ public class MemoryManager {
     }
 
     private void writeSuperblock() {
-        // TODO:
-        // Utiliser Utils pour écrire les métadonnées.
 
         Utils.writeString(
                 memory,
@@ -126,5 +134,35 @@ public class MemoryManager {
 
     public byte[] getFilesystemMemory() {
         return memory;
+    }
+
+    public int allocateInode(int fileType) {
+
+        for (int i = 0; i < MAX_INODES; i++) {
+
+            Inode inode = new Inode(this, i);
+
+            if (inode.getFileType() == 0) {
+
+                int[] emptyPointers =
+                        new int[Inode.DIRECT_POINTERS];
+
+                for (int p = 0;
+                     p < emptyPointers.length;
+                     p++) {
+
+                    emptyPointers[p] = -1;
+                }
+
+                inode.writeInode(
+                        fileType,
+                        0,
+                        emptyPointers);
+
+                return i;
+            }
+        }
+
+        return -1;
     }
 }
