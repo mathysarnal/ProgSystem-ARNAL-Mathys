@@ -66,6 +66,12 @@ public class VirtualFileSystem {
             int inodeNum,
             byte[] data) {
 
+        Inode inode = new Inode(memoryManager, inodeNum);
+
+        if (inode.getFileType() == 0) {
+        return false;
+        }
+
         int blocksNeeded =
                 (data.length
                 + MemoryManager.BLOCK_SIZE - 1)
@@ -80,9 +86,15 @@ public class VirtualFileSystem {
         int[] blockPointers =
                 new int[Inode.DIRECT_POINTERS];
 
-        Arrays.fill(
-                blockPointers,
-                -1);
+        Arrays.fill(blockPointers, -1);
+
+        int[] oldPointers = inode.getDirectPointers();
+
+        for (int blockNum : oldPointers) {
+            if (blockNum >= 129 && blockNum < MemoryManager.NUM_BLOCKS) {
+                memoryManager.setBlockUsed(blockNum, false);
+            }
+        }
 
         // Allocation des blocs
         for (int i = 0;
@@ -146,12 +158,6 @@ public class VirtualFileSystem {
             bytesRemaining -=
                     bytesToCopy;
         }
-
-        // Mise à jour de l'inode
-        Inode inode =
-                new Inode(
-                        memoryManager,
-                        inodeNum);
 
         long now =
                 System.currentTimeMillis();
@@ -234,5 +240,54 @@ public class VirtualFileSystem {
 
     public MemoryManager getMemoryManager() {
         return memoryManager;
+    }
+
+    public boolean deleteFile(int inodeNum) {
+
+        if (inodeNum < 0 ||
+                inodeNum >= MemoryManager.MAX_INODES) {
+                return false;
+        }
+
+        Inode inode =
+                new Inode(memoryManager, inodeNum);
+
+        if (inode.getFileType() == 0) {
+                return false;
+        }
+
+        int[] pointers =
+                inode.getDirectPointers();
+
+        for (int blockNum : pointers) {
+
+                if (blockNum >= 129 &&
+                        blockNum < MemoryManager.NUM_BLOCKS) {
+
+                memoryManager.setBlockUsed(
+                        blockNum,
+                        false);
+                }
+        }
+
+        int[] emptyPointers =
+                new int[Inode.DIRECT_POINTERS];
+
+        Arrays.fill(
+                emptyPointers,
+                -1);
+
+        inode.writeToMemory(
+                0,
+                0,
+                0L,
+                0L,
+                emptyPointers,
+                -1,
+                (short) 0,
+                0
+        );
+
+        return true;
     }
 }

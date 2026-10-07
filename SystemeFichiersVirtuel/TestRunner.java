@@ -1,3 +1,6 @@
+import java.io.FileReader;
+import java.io.IOException;
+
 public class TestRunner {
 
     public static void main(String[] args) {
@@ -9,6 +12,15 @@ public class TestRunner {
         testStep7();
         testStep8();
         testStep9();
+        testStep10();
+
+        if (args.length > 0) {
+            testExternalFile(args[0]);
+        } else {
+            System.out.println("[INFO] Aucun fichier externe fourni.");
+        }
+
+        System.out.println("=== TOUS LES TESTS SONT TERMINÉS ===");
     }
     
     public static void testStep2() {
@@ -394,6 +406,136 @@ public class TestRunner {
         }
 
         System.out.println("[OK] Étape 9 validée !");
+    }
+
+    public static void testStep10() {
+
+        System.out.println("=== TEST ÉTAPE 10 : Suppression Fichier ===");
+
+        VirtualFileSystem vfs =
+                new VirtualFileSystem();
+
+        // Création du fichier
+        assert vfs.createFile("/", "delete.txt") :
+                "La création du fichier a échoué";
+
+        // Écriture de données
+        byte[] data =
+                "Contenu à supprimer".getBytes();
+
+        assert vfs.writeFile(0, data) :
+                "L'écriture du fichier a échoué";
+
+        MemoryManager mm =
+                vfs.getMemoryManager();
+
+        Inode inode =
+                new Inode(mm, 0);
+
+        // Vérifie que le fichier possède bien un bloc
+        int[] pointers =
+                inode.getDirectPointers();
+
+        int firstBlock =
+                pointers[0];
+
+        assert firstBlock >= 129 :
+                "Le fichier doit utiliser un bloc de données";
+
+        assert mm.isBlockUsed(firstBlock) == 1 :
+                "Le bloc doit être occupé avant suppression";
+
+        // Suppression
+        assert vfs.deleteFile(0) :
+                "La suppression du fichier a échoué";
+
+        // L'inode doit être libre
+        Inode deletedInode =
+                new Inode(mm, 0);
+
+        assert deletedInode.getFileType() == 0 :
+                "L'inode doit être libéré";
+
+        // Le bloc doit être libéré
+        assert mm.isBlockUsed(firstBlock) == 0 :
+                "Le bloc de données doit être libéré";
+
+        // Vérifie que l'inode peut être réutilisé
+        assert vfs.createFile("/", "nouveau.txt") :
+                "L'inode libéré doit pouvoir être réutilisé";
+
+        System.out.println("[OK] Étape 10 validée !");
+    }
+
+    public static void testExternalFile(String filename) {
+
+        System.out.println(
+                "=== TEST FICHIER EXTERNE ===");
+
+        StringBuilder builder =
+                new StringBuilder();
+
+        try (FileReader reader =
+                        new FileReader(filename)) {
+
+                char[] buffer =
+                        new char[1024];
+
+                int count;
+
+                while ((count =
+                        reader.read(buffer)) != -1) {
+
+                builder.append(
+                        buffer,
+                        0,
+                        count);
+                }
+
+        } catch (IOException e) {
+
+                throw new AssertionError(
+                        "Impossible de lire le fichier externe",
+                        e);
+        }
+
+        String content =
+                builder.toString();
+
+        byte[] original =
+                content.getBytes();
+
+        VirtualFileSystem vfs =
+                new VirtualFileSystem();
+
+        assert vfs.createFile(
+                "/",
+                "external.txt");
+
+        assert vfs.writeFile(
+                0,
+                original);
+
+        byte[] recovered =
+                vfs.readFile(0);
+
+        assert recovered != null;
+
+        assert recovered.length ==
+                original.length :
+                "Taille du fichier différente";
+
+        for (int i = 0;
+                i < original.length;
+                i++) {
+
+                assert recovered[i] ==
+                        original[i] :
+                        "Différence à l'octet " + i;
+        }
+
+        System.out.println(
+                "[OK] Fichier externe correctement transféré !");
     }
 
 }

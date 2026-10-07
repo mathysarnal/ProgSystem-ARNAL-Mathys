@@ -1,0 +1,94 @@
+COMPTE RENDU – TP SYSTÈME DE FICHIERS VIRTUEL
+
+QUESTIONS DE RÉFLEXION
+
+1. Représentation binaire
+
+Quand on stocke une structure dans un tableau de byte, les valeurs sont séparées en plusieurs octets. Il faut donc définir dans quel ordre ces octets sont enregistrés. La convention big-endian permet d'avoir toujours le même format : l'octet de poids fort est placé en premier.
+
+C'est important car sinon une même valeur pourrait être interprétée différemment selon la méthode utilisée pour la relire. Si writeInt écrit en big-endian alors que readInt lit en little-endian, les octets seront inversés lors de la lecture. La valeur récupérée sera donc différente de la valeur originale.
+
+2. Signes et octets
+
+En Java, le type byte est signé et contient des valeurs allant de -128 à 127. Quand on récupère un byte pour reconstruire un entier, il faut éviter que le signe du byte modifie la valeur recherchée.
+
+L'opération memory[offset] & 0xFF permet de conserver uniquement les 8 bits du byte. Elle permet donc d'obtenir une valeur comprise entre 0 et 255 avant de l'utiliser dans la reconstruction de l'entier.
+
+Le symbole & est un opérateur binaire AND. Il compare les bits des deux valeurs et conserve un bit à 1 seulement si les deux bits correspondants valent 1. Avec 0xFF, les 8 bits du byte sont conservés.
+
+3. Sérialisation
+
+Tester uniquement readInt(writeInt(x)) == x permet de vérifier que l'écriture puis la lecture redonnent la même valeur. Mais cela ne permet pas forcément de repérer toutes les erreurs possibles.
+
+Il faut tester plusieurs types de valeurs : positives, négatives, zéro, petites valeurs et grandes valeurs. On peut aussi utiliser des valeurs particulières comme 0, 1, -1, Integer.MAX_VALUE et Integer.MIN_VALUE, ainsi que des valeurs choisies aléatoirement.
+
+L'inspection directe des octets permet de vérifier que chaque octet est placé exactement à l'endroit attendu et dans le bon ordre. Une fonction pourrait réussir à relire sa propre écriture tout en utilisant une mauvaise convention. Vérifier directement le tableau permet donc de détecter davantage d'erreurs.
+
+4. Bitmap
+
+Un bitmap est plus compact qu'une représentation utilisant un entier par bloc car un seul bit suffit pour représenter l'état d'un bloc : 0 pour libre et 1 pour occupé.
+
+Avec N blocs, il faut N bits. Comme un octet contient 8 bits, la taille du bitmap est de ceil(N/8) octets. Si N est divisible par 8, cela correspond simplement à N/8 octets.
+
+Dans notre système, il y a 2048 blocs. Le bitmap représente donc 2048 bits, soit 256 octets.
+
+5. Layout
+
+Les différentes structures du système de fichiers doivent avoir des zones mémoire déterministes pour que chaque partie du programme sache où retrouver les informations. Le superbloc, le bitmap, la table des inodes et la zone de données ont chacun une position définie.
+
+Si la position du bitmap changeait sans modifier les méthodes qui l'utilisent, ces méthodes iraient lire ou écrire au mauvais endroit dans le tableau de mémoire. Le bitmap pourrait alors être corrompu et le système pourrait considérer des blocs libres comme occupés, ou l'inverse.
+
+Le layout permet donc d'avoir une organisation stable et commune à toutes les classes.
+
+6. Inode
+
+Les métadonnées et le contenu d'un fichier sont séparés pour ne pas mélanger les informations qui décrivent le fichier avec les données qu'il contient.
+
+L'inode contient par exemple le type du fichier, sa taille, les dates, les permissions et surtout les pointeurs vers les blocs de données. Il ne contient donc pas directement le contenu complet du fichier.
+
+Grâce aux pointeurs, l'inode permet de retrouver les blocs physiques dans lesquels les données sont stockées. On peut donc considérer l'inode comme une structure qui décrit le fichier et permet de retrouver son contenu.
+
+7. Allocation
+
+allocateBlock() doit commencer sa recherche au bloc 129 car les blocs précédents sont réservés aux structures du système de fichiers.
+
+Le bloc 0 contient le superbloc, le bloc 1 contient le bitmap et les blocs 2 à 128 sont utilisés pour la table des inodes. La zone de données commence donc au bloc 129.
+
+Si la recherche commençait au bloc 0, le programme pourrait considérer comme disponible un bloc qui contient déjà une structure importante. Une allocation pourrait alors écraser le superbloc, le bitmap ou la table des inodes et rendre le système de fichiers incohérent.
+
+8. Fragmentation
+
+Oui, deux systèmes peuvent avoir exactement le même nombre de blocs libres tout en ayant une fragmentation différente.
+
+Par exemple, avec 8 blocs :
+
+Système A :
+[Libre][Libre][Libre][Libre][Occupé][Occupé][Occupé][Occupé]
+
+Système B :
+[Libre][Occupé][Libre][Occupé][Libre][Occupé][Libre][Occupé]
+
+Les deux systèmes ont 4 blocs libres. Pourtant, dans le premier cas les blocs libres sont regroupés en une seule zone, alors que dans le deuxième ils sont répartis entre les blocs occupés.
+
+La disposition des blocs libres est donc aussi importante que leur nombre. C'est ce qu'on appelle la fragmentation.
+
+
+SYNTHÈSE ARCHITECTURALE
+
+Le système de fichiers virtuel est construit par couches. La mémoire brute est représentée par un tableau de byte de 1 MiB. Cette mémoire est ensuite organisée selon un layout précis.
+
+Le layout sépare plusieurs zones : le superbloc, le bitmap, la table des inodes et la zone de données. Le bitmap permet de connaître l'état d'utilisation des blocs. La table des inodes contient les métadonnées des fichiers et leurs pointeurs vers les blocs de données.
+
+La classe MemoryManager s'occupe principalement de la gestion de la mémoire et des blocs. La classe Inode s'occupe de la structure et de la localisation des métadonnées. Enfin, VirtualFileSystem utilise ces mécanismes pour fournir des opérations de plus haut niveau comme créer, écrire, lire et supprimer un fichier.
+
+On a donc une chaîne de fonctionnement qui part d'une valeur Java, la transforme en octets, puis la stocke dans la mémoire du système de fichiers. Les données sont ensuite retrouvées grâce aux informations contenues dans les inodes et aux blocs alloués dans le bitmap.
+
+Cette organisation permet de séparer les responsabilités entre les différentes classes. Chaque niveau n'a pas besoin de connaître tous les détails des autres niveaux. Cela rend le système plus simple à comprendre et à modifier.
+
+CONCLUSION
+
+Ce TP permet de mettre en pratique plusieurs notions de programmation système : représentation binaire, sérialisation, adressage mémoire, allocation de blocs, bitmap, inodes et organisation des données.
+
+Le fonctionnement du VFS repose surtout sur le respect du layout et des conventions définies. Si les offsets, les pointeurs ou le bitmap ne correspondent pas au format prévu, les différentes parties du système ne peuvent plus communiquer correctement.
+
+La validation finale permet donc de vérifier à la fois le comportement du système et sa représentation interne.

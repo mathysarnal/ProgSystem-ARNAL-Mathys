@@ -1,0 +1,3 @@
+Bonjour, ceci est un fichier de test pour mon système de fichiers virtuel.
+Étape 11 du TP VFS.
+Test de lecture et d'écriture d'un fichier externe.
